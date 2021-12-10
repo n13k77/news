@@ -1,6 +1,7 @@
 package news
 
 import (
+	"context"
 	"log"
 	"strings"
 	"time"
@@ -30,10 +31,15 @@ func NewSubscriber(categories []string) *Subscriber {
 
 func (s *Subscriber) Receive (p *Publisher) {
 	log.Println("subscriber receive")
-	ch, _ := p.Subscribe(s.cats)
 
-	for a := range ch {
-		log.Println("receive article")
-		log.Println(a.String())
-	}
+	ctx := context.Background()
+	ctx, _ = context.WithCancel(ctx)
+	ch, _ := p.Subscribe(ctx, s.cats)
+
+	go func(){
+		for a := range ch {
+			log.Println("receive article")
+			log.Println(a.String())
+		}
+	}()
 }

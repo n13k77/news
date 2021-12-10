@@ -79,13 +79,25 @@ func (p *Publisher) Save() error {
 }
 
 // func AddSource() adds a news source to the publisher, distributes its articles
-func (p *Publisher) Dispatch(s Source) {
+func (p *Publisher) Dispatch(ctx context.Context, s Source) {
 	log.Println("publisher distribute source")
 
+	ctx, cancel := context.WithCancel(ctx)
+	p.cancel = cancel
+
+	// launch a goroutine to listen context cancellation
+	go func(ctx context.Context) {
+		<-ctx.Done()
+		// call the cancel function
+		p.Stop()
+		cancel()
+		// call Stop()
+	}(ctx)
+	
 	go func() {
 		// start listening to articles that are published by the source
 		log.Println("publisher distribute source start listening")
-		for a := range s.GetSourceChannel() {
+		for a := range s.ConnectSource(ctx) {
 
 			// add the received article to the archive 
 			p.mutex.Lock()
@@ -109,7 +121,7 @@ func (p *Publisher) Dispatch(s Source) {
 
 // func Subscribe() adds a subscriber to a publisher. The subscriber has to
 // provide the topic to which it is subscribing and its unique identifier
-func (p *Publisher) Subscribe(cats []string) (<-chan Article, error) {
+func (p *Publisher) Subscribe(ctx context.Context, cats []string) (<-chan Article, error) {
 	log.Println("publisher subscribe")
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -118,6 +130,19 @@ func (p *Publisher) Subscribe(cats []string) (<-chan Article, error) {
 	id := len(p.subs)
 	log.Println(id)
 	
+	// launch a goroutine to listen context cancellation
+	go func(ctx context.Context) {
+		// listen for subscriber context cancellation
+		<-ctx.Done()
+
+		// close the channel to the subscriber, remove its subscibed topics
+		p.mutex.Lock()
+		close(p.subs[id])
+		p.cats[id] = []string{}
+		p.mutex.Unlock()
+		
+	}(ctx)
+
 	c := []string{}
 	for _, cat := range cats {
 		c = append(c, strings.ToLower(cat))
