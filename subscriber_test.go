@@ -28,6 +28,7 @@ func TestSubscriberRandomSource(t *testing.T) {
 		src := NewRandomSource()
 		
 		p.Dispatch(ctx, src)
+		defer p.cancel()
 		
 		go func(){
 			sub1.Receive(p)
@@ -62,6 +63,8 @@ func TestSubscriberFileSource(t *testing.T) {
 			sub1.Receive(p)
 			sub2.Receive(p)
 		}()
+
+		time.Sleep(time.Second * 10)
 
 	})
 }

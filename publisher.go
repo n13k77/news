@@ -34,7 +34,6 @@ func NewPublisher(config PublisherConfig) (*Publisher) {
 	p.cats = [][]string{}		// slice of slice of categories, the slice index serves as the subscriber ID
 	p.Stopped = false
 
-	log.Println(len(p.subs), len(p.cats))
 	// if not specified, set backupfile to a default location
 	if config.Backupfile == "" {
 		config.Backupfile = "./backup.tmp"
